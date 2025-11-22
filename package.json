@@ -1,0 +1,20 @@
+{
+  "name": "chat-apps",
+  "version": "1.0.0",
+  "description": "apps for the chat",
+  "license": "AGPL-3.0-only",
+  "author": "Vance Perry",
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@google/genai": "^1.30.0",
+    "dotenv": "^17.2.3",
+    "ejs": "^3.1.10",
+    "express": "^5.1.0",
+    "marked": "^17.0.1",
+    "socket.io": "^4.8.1"
+  }
+}

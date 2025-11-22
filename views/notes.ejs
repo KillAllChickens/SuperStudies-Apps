@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>NoteTaker</title>
+
+        <!-- Fonts & Icons -->
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@400&display=swap"
+            rel="stylesheet"
+        />
+
+        <!-- Markdown Parser -->
+        <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+        <!-- GOOGLE AUTH LIBRARY -->
+        <script
+            src="https://accounts.google.com/gsi/client"
+            async
+            defer
+        ></script>
+        <!-- GOOGLE API LIBRARY -->
+        <script src="https://apis.google.com/js/api.js"></script>
+
+        <style>
+            :root {
+                --primary: #cc0000;
+                --primary-hover: #ff1a1a;
+                --bg: #0f0f0f;
+                --card-bg: #1a1a1a;
+                --card-header-bg: #252525;
+                --text-main: #e5e5e5;
+                --text-muted: #a3a3a3;
+                --border: #333333;
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family: "Inter", sans-serif;
+                background-color: var(--bg);
+                color: var(--text-main);
+                margin: 0;
+                padding: 2rem;
+                height: 100vh;
+                display: flex;
+                flex-direction: column;
+            }
+
+            /* Custom Dark Scrollbar */
+            ::-webkit-scrollbar {
+                width: 8px;
+            }
+            ::-webkit-scrollbar-track {
+                background: var(--bg);
+            }
+            ::-webkit-scrollbar-thumb {
+                background: #444;
+                border-radius: 4px;
+            }
+            ::-webkit-scrollbar-thumb:hover {
+                background: var(--primary);
+            }
+
+            header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 1.5rem;
+                border-bottom: 1px solid var(--border);
+                padding-bottom: 1.5rem;
+            }
+
+            h1 {
+                margin: 0;
+                font-weight: 800;
+                letter-spacing: -0.05em;
+                background: linear-gradient(45deg, #fff, #999);
+                -webkit-background-clip: text;
+                background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }
+
+            .controls {
+                display: flex;
+                gap: 1rem;
+            }
+
+            /* Main Layout Grid */
+            .main-container {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 2rem;
+                flex: 1;
+                min-height: 0;
+            }
+
+            .card {
+                background: var(--card-bg);
+                border-radius: 12px;
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+                border: 1px solid var(--border);
+            }
+
+            .card-header {
+                padding: 1rem;
+                border-bottom: 1px solid var(--border);
+                background: var(--card-header-bg);
+                font-weight: 600;
+                color: var(--text-muted);
+                font-size: 0.875rem;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            #transcript {
+                width: 100%;
+                height: 100%;
+                border: none;
+                padding: 1.5rem;
+                resize: none;
+                font-family: "JetBrains Mono", monospace;
+                font-size: 0.9rem;
+                color: var(--text-muted);
+                background-color: var(--card-bg);
+                outline: none;
+                line-height: 1.6;
+            }
+
+            #notes {
+                padding: 2rem;
+                overflow-y: auto;
+                line-height: 1.7;
+                color: var(--text-main);
+            }
+
+            /* Button Styling */
+            button {
+                border: none;
+                padding: 0.75rem 1.5rem;
+                border-radius: 6px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+
+            #recordButton {
+                background-color: var(--primary);
+                color: white;
+                box-shadow: 0 4px 12px rgba(204, 0, 0, 0.3);
+            }
+
+            #recordButton:hover {
+                background-color: var(--primary-hover);
+            }
+
+            #recordButton.recording {
+                background-color: var(--bg);
+                border: 1px solid var(--primary);
+                color: var(--primary);
+                animation: pulse 2s infinite;
+            }
+
+            /* New Google Export Button */
+            #exportButton {
+                background-color: #333;
+                color: #fff;
+                border: 1px solid #555;
+            }
+            #exportButton:hover {
+                background-color: #444;
+            }
+
+            @keyframes pulse {
+                0% {
+                    box-shadow: 0 0 0 0 rgba(204, 0, 0, 0.7);
+                }
+                70% {
+                    box-shadow: 0 0 0 10px rgba(204, 0, 0, 0);
+                }
+                100% {
+                    box-shadow: 0 0 0 0 rgba(204, 0, 0, 0);
+                }
+            }
+
+            /* Markdown Styling */
+            #notes h1 {
+                font-size: 1.8rem;
+                margin-bottom: 1rem;
+                border-bottom: 2px solid var(--primary);
+                padding-bottom: 0.5rem;
+                color: #fff;
+            }
+            #notes h2 {
+                font-size: 1.4rem;
+                margin-top: 1.5rem;
+                color: #fff;
+            }
+            #notes ul {
+                padding-left: 1.5rem;
+            }
+            #notes li {
+                margin-bottom: 0.5rem;
+                color: var(--text-main);
+            }
+            #notes strong {
+                color: var(--primary);
+                font-weight: 700;
+            }
+
+            #status {
+                font-size: 0.9rem;
+                color: var(--text-muted);
+            }
+            .live-dot {
+                height: 8px;
+                width: 8px;
+                background-color: var(--primary);
+                border-radius: 50%;
+                display: inline-block;
+                margin-right: 5px;
+            }
+        </style>
+    </head>
+    <body>
+        <header>
+            <div>
+                <h1>NoteTaker</h1>
+                <span id="status">System Ready.</span>
+            </div>
+            <div class="controls">
+                <button id="exportButton" onclick="exportToGoogleDocs()">
+                    📝 Export to Docs
+                </button>
+                <button id="recordButton">
+                    <span class="icon">🎙️</span>
+                    <span id="btnText">Start Recording</span>
+                </button>
+            </div>
+        </header>
+
+        <div class="main-container">
+            <div class="card">
+                <div class="card-header">
+                    <span>Raw Input</span>
+                    <span style="font-size: 0.7rem; opacity: 0.5"
+                        >AUDIO STREAM</span
+                    >
+                </div>
+                <textarea
+                    id="transcript"
+                    readonly
+                    placeholder="// Waiting for audio input..."
+                ></textarea>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span>Analysis</span>
+                    <span style="font-size: 0.7rem; opacity: 0.5">NOTES</span>
+                </div>
+                <div id="notes">
+                    <p
+                        style="
+                            color: #444;
+                            font-style: italic;
+                            text-align: center;
+                            margin-top: 30%;
+                        "
+                    >
+                        Notes will generate here automatically<br />after the
+                        session ends.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <script src="/socket.io/socket.io.js"></script>
+        <script>
+            // --- CONFIGURATION ---
+            const CLIENT_ID =
+                "1054460141218-4pe0lgjdsumfnuovq9fges6kh1cuedet.apps.googleusercontent.com";
+            const SCOPES = "https://www.googleapis.com/auth/drive.file";
+
+            // --- MAIN APP LOGIC ---
+            const socket = io();
+            const status = document.getElementById("status");
+            const recordButton = document.getElementById("recordButton");
+            const btnText = document.getElementById("btnText");
+            const transcript = document.getElementById("transcript");
+            const notes = document.getElementById("notes");
+
+            let recognition;
+            let isRecording = false;
+            let currentMarkdown = "";
+
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices
+                    .getUserMedia({
+                        audio: {
+                            echoCancellation: false,
+                            noiseSuppression: false,
+                            autoGainControl: true,
+                        },
+                    })
+                    .then((stream) => {
+                        stream.getTracks().forEach((track) => track.stop());
+                    })
+                    .catch((e) => console.log("Audio constraints error:", e));
+            }
+
+            if (
+                "SpeechRecognition" in window ||
+                "webkitSpeechRecognition" in window
+            ) {
+                const SpeechRecognition =
+                    window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                recognition.lang = "en-US";
+
+                recognition.onresult = (event) => {
+                    let interim_transcript = "";
+                    let final_transcript = "";
+                    for (
+                        let i = event.resultIndex;
+                        i < event.results.length;
+                        ++i
+                    ) {
+                        if (event.results[i].isFinal) {
+                            final_transcript += event.results[i][0].transcript;
+                        } else {
+                            interim_transcript +=
+                                event.results[i][0].transcript;
+                        }
+                    }
+                    transcript.value = final_transcript + interim_transcript;
+                    transcript.scrollTop = transcript.scrollHeight;
+                    if (final_transcript)
+                        socket.emit("transcription", final_transcript);
+                };
+
+                recognition.onstart = () => {
+                    isRecording = true;
+                    status.innerHTML =
+                        '<span class="live-dot"></span> Listening...';
+                    status.style.color = "var(--primary)";
+                    recordButton.classList.add("recording");
+                    btnText.textContent = "Stop & Process";
+                };
+
+                recognition.onend = () => {
+                    isRecording = false;
+                    status.textContent = "Processing with AI...";
+                    status.style.color = "var(--text-muted)";
+                    recordButton.classList.remove("recording");
+                    btnText.textContent = "Start Recording";
+                    notes.innerHTML =
+                        '<p style="color: var(--primary); text-align:center; margin-top: 2rem; font-family: monospace;">[PROCESSING DATA...]</p>';
+                    socket.emit("end_recording", transcript.value);
+                };
+            }
+
+            recordButton.addEventListener("click", () => {
+                if (isRecording) recognition.stop();
+                else {
+                    transcript.value = "";
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        console.error(e);
+                    }
+                }
+            });
+
+            socket.on("notes_generated", (generatedMarkdown) => {
+                currentMarkdown = generatedMarkdown; // Save for export
+                notes.innerHTML = marked.parse(generatedMarkdown);
+                status.textContent = "Analysis Complete.";
+            });
+
+            let tokenClient;
+            let gapiInited = false;
+            let gisInited = false;
+
+            function gapiLoaded() {
+                gapi.load("client", async () => {
+                    await gapi.client.init({});
+                    gapiInited = true;
+                });
+            }
+            function gisLoaded() {
+                tokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: CLIENT_ID,
+                    scope: SCOPES,
+                    callback: "", // Defined later
+                });
+                gisInited = true;
+            }
+
+            setTimeout(() => {
+                if (typeof gapi !== "undefined") gapiLoaded();
+            }, 1000);
+            setTimeout(() => {
+                if (typeof google !== "undefined") gisLoaded();
+            }, 1000);
+
+            function exportToGoogleDocs() {
+                if (!currentMarkdown) {
+                    alert("No notes generated yet!");
+                    return;
+                }
+
+                tokenClient.callback = async (resp) => {
+                    if (resp.error !== undefined) {
+                        throw resp;
+                    }
+                    await createDoc(currentMarkdown);
+                };
+
+                if (gapi.client.getToken() === null) {
+                    tokenClient.requestAccessToken({ prompt: "consent" });
+                } else {
+                    tokenClient.requestAccessToken({ prompt: "" });
+                }
+            }
+
+            async function createDoc(markdownContent) {
+                status.textContent = "Uploading to Google Docs...";
+
+                const htmlContent = marked.parse(markdownContent);
+
+                const fileMetadata = {
+                    name:
+                        "Notes(CHANGE THIS) - " +
+                        new Date().toLocaleDateString(),
+                    mimeType: "application/vnd.google-apps.document",
+                };
+
+                // Metadata for the multipart upload
+                const boundary = "-------314159265358979323846";
+                const delimiter = "\r\n--" + boundary + "\r\n";
+                const close_delim = "\r\n--" + boundary + "--";
+
+                const multipartRequestBody =
+                    delimiter +
+                    "Content-Type: application/json\r\n\r\n" +
+                    JSON.stringify(fileMetadata) +
+                    delimiter +
+                    "Content-Type: text/html\r\n\r\n" +
+                    htmlContent +
+                    close_delim;
+
+                try {
+                    const request = gapi.client.request({
+                        path: "/upload/drive/v3/files",
+                        method: "POST",
+                        params: { uploadType: "multipart" },
+                        headers: {
+                            "Content-Type":
+                                'multipart/related; boundary="' +
+                                boundary +
+                                '"',
+                        },
+                        body: multipartRequestBody,
+                    });
+
+                    await request.then((response) => {
+                        const fileId = response.result.id;
+
+                        status.textContent = "Export Successful!";
+
+                        if (fileId) {
+                            const docUrl = `https://docs.google.com/document/d/${fileId}/edit`;
+
+                            window.open(docUrl, "_blank");
+                        }
+                    });
+                } catch (err) {
+                    console.error("Error uploading to Drive", err);
+                    status.textContent = "Export failed. Check console.";
+                }
+            }
+        </script>
+    </body>
+</html>
