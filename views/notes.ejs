@@ -16,15 +16,6 @@
         <!-- Markdown Parser -->
         <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-        <!-- GOOGLE AUTH LIBRARY -->
-        <script
-            src="https://accounts.google.com/gsi/client"
-            async
-            defer
-        ></script>
-        <!-- GOOGLE API LIBRARY -->
-        <script src="https://apis.google.com/js/api.js"></script>
-
         <style>
             :root {
                 --primary: #cc0000;
@@ -243,8 +234,8 @@
                 <span id="status">System Ready.</span>
             </div>
             <div class="controls">
-                <button id="exportButton" onclick="exportToGoogleDocs()">
-                    📝 Export to Docs
+                <button id="exportButton" onclick="universalExport()">
+                    📋 Copy & Open Docs
                 </button>
                 <button id="recordButton">
                     <span class="icon">🎙️</span>
@@ -291,11 +282,6 @@
 
         <script src="/socket.io/socket.io.js"></script>
         <script>
-            // --- CONFIGURATION ---
-            const CLIENT_ID =
-                "1054460141218-4pe0lgjdsumfnuovq9fges6kh1cuedet.apps.googleusercontent.com";
-            const SCOPES = "https://www.googleapis.com/auth/drive.file";
-
             // --- MAIN APP LOGIC ---
             const socket = io();
             const status = document.getElementById("status");
@@ -308,6 +294,7 @@
             let isRecording = false;
             let currentMarkdown = "";
 
+            // Attempt to boost microphone gain via constraints
             if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                 navigator.mediaDevices
                     .getUserMedia({
@@ -389,111 +376,46 @@
             });
 
             socket.on("notes_generated", (generatedMarkdown) => {
-                currentMarkdown = generatedMarkdown; // Save for export
+                currentMarkdown = generatedMarkdown;
                 notes.innerHTML = marked.parse(generatedMarkdown);
                 status.textContent = "Analysis Complete.";
             });
 
-            let tokenClient;
-            let gapiInited = false;
-            let gisInited = false;
-
-            function gapiLoaded() {
-                gapi.load("client", async () => {
-                    await gapi.client.init({});
-                    gapiInited = true;
-                });
-            }
-            function gisLoaded() {
-                tokenClient = google.accounts.oauth2.initTokenClient({
-                    client_id: CLIENT_ID,
-                    scope: SCOPES,
-                    callback: "", // Defined later
-                });
-                gisInited = true;
-            }
-
-            setTimeout(() => {
-                if (typeof gapi !== "undefined") gapiLoaded();
-            }, 1000);
-            setTimeout(() => {
-                if (typeof google !== "undefined") gisLoaded();
-            }, 1000);
-
-            function exportToGoogleDocs() {
+            // --- UNIVERSAL EXPORT FUNCTION ---
+            // This works on ALL accounts by copying HTML to clipboard
+            // and opening a blank Doc for the user to paste.
+            async function universalExport() {
                 if (!currentMarkdown) {
                     alert("No notes generated yet!");
                     return;
                 }
 
-                tokenClient.callback = async (resp) => {
-                    if (resp.error !== undefined) {
-                        throw resp;
-                    }
-                    await createDoc(currentMarkdown);
-                };
+                status.textContent = "Copying to clipboard...";
 
-                if (gapi.client.getToken() === null) {
-                    tokenClient.requestAccessToken({ prompt: "consent" });
-                } else {
-                    tokenClient.requestAccessToken({ prompt: "" });
-                }
-            }
+                // 1. Convert Markdown to HTML
+                const rawHtml = marked.parse(currentMarkdown);
 
-            async function createDoc(markdownContent) {
-                status.textContent = "Uploading to Google Docs...";
-
-                const htmlContent = marked.parse(markdownContent);
-
-                const fileMetadata = {
-                    name:
-                        "Notes(CHANGE THIS) - " +
-                        new Date().toLocaleDateString(),
-                    mimeType: "application/vnd.google-apps.document",
-                };
-
-                // Metadata for the multipart upload
-                const boundary = "-------314159265358979323846";
-                const delimiter = "\r\n--" + boundary + "\r\n";
-                const close_delim = "\r\n--" + boundary + "--";
-
-                const multipartRequestBody =
-                    delimiter +
-                    "Content-Type: application/json\r\n\r\n" +
-                    JSON.stringify(fileMetadata) +
-                    delimiter +
-                    "Content-Type: text/html\r\n\r\n" +
-                    htmlContent +
-                    close_delim;
+                // 2. Prepare HTML for Clipboard (preserving formatting)
+                const blob = new Blob([rawHtml], { type: "text/html" });
+                const data = [new ClipboardItem({ ["text/html"]: blob })];
 
                 try {
-                    const request = gapi.client.request({
-                        path: "/upload/drive/v3/files",
-                        method: "POST",
-                        params: { uploadType: "multipart" },
-                        headers: {
-                            "Content-Type":
-                                'multipart/related; boundary="' +
-                                boundary +
-                                '"',
-                        },
-                        body: multipartRequestBody,
-                    });
+                    // 3. Write to clipboard
+                    await navigator.clipboard.write(data);
 
-                    await request.then((response) => {
-                        const fileId = response.result.id;
+                    status.textContent = "Copied! Opening Docs...";
 
-                        status.textContent = "Export Successful!";
+                    alert(
+                        "SUCCESS!\n\n1. The notes have been copied to your clipboard.\n2. A new Google Doc will be opened.\n3. Just Paste (Ctrl+V) in the doc and your notes will be there."
+                    );
 
-                        if (fileId) {
-                            const docUrl = `https://docs.google.com/document/d/${fileId}/edit`;
-
-                            window.open(docUrl, "_blank");
-                        }
-                    });
+                    const newTab = window.open("https://docs.new", "_blank");
                 } catch (err) {
-                    console.error("Error uploading to Drive", err);
-                    status.textContent = "Export failed. Check console.";
+                    console.error("Clipboard failed", err);
+                    status.textContent = "Clipboard failed.";
+                    alert(
+                        "Could not copy to clipboard (Browser restriction). You can manually copy the text from the Notes box."
+                    );
                 }
             }
         </script>
