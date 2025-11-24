@@ -21,8 +21,6 @@ module.exports = (io) => {
             console.log(`Processing notes for ${socket.id}. Length: ${textToProcess.length}`);
 
             if (textToProcess.trim().length > 0) {
-                // Notify client we are working
-                // (Optional: You can add a listener for this on client side)
                 socket.emit("status_update", "Analyzing with AI...");
 
                 const notes = await generateNotes(textToProcess);

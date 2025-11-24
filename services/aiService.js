@@ -16,7 +16,7 @@ try {
 async function generateNotes(transcript) {
     try {
         const response = await ai.models.generateContent({
-            model: "gemini-2.5-pro",
+            model: "gemini-2.5-flash",
             contents: transcript,
             config: {
                 systemInstruction: note_prompt,
